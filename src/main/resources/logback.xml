@@ -22,7 +22,7 @@
 
 
   <!-- Logger definitions -->
-  <logger name="ab.Listener" level="DEBUG">
+  <logger name="ab.Listener" level="INFO">
     <appender-ref ref="LISTENER" />
   </logger>
 

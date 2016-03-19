@@ -2,6 +2,7 @@ package ab;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Enumeration;
 import java.util.Properties;
 
 import javax.servlet.ServletContextEvent;
@@ -10,6 +11,7 @@ import javax.servlet.ServletContextListener;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.quartz.CronTrigger;
+import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
@@ -48,21 +50,45 @@ public class Listener implements ServletContextListener {
    		// Load properties
    	    Properties p = loadProperties("listener.properties");
    		
-   		// define the job and tie it to our Job1 class 
-   		JobDetail job1 = newJob(Job1.class) 
-        		.withIdentity("job1") 
-        		.build();
+   	    // assign the property names in a enumeration
+   	    Enumeration<?> en = p.propertyNames();
+   	  	while (en.hasMoreElements()){
+   	 		String prop = en.nextElement().toString();
+   	 		LOGGER.debug(prop);
+   	 		String[] parts = prop.split("\\.");
+   	 		if( "status".equals(parts[1]) ) {
+   	 			// property exists
+   	 			String key = p.getProperty(prop,"off");
+   	 			if("on".equals(key)) {
+   	 				// define the job and tie it to the job class
+   	 				key = parts[0]+".job";
+   	 				String jobClass = p.getProperty(key);
+   	 				try {
+   	   	 				LOGGER.info(parts[0]+" launches "+jobClass);
+   	 					//Class<? extends Job> k = (Class<? extends Job>) Class.forName(jobClass);
+   	   	 				@SuppressWarnings("unchecked")
+   	 					JobDetail job = newJob((Class<? extends Job>) Class.forName(jobClass))
+   	 							.withIdentity(jobClass) 
+   	 							.build();
 
-   		// Pull triggers
-   		pullTrigger("trigger1", job1, p);
-   		pullTrigger("trigger2", job1, p);
-   		pullTrigger("trigger3", job1, p);
- 
-   		JobDetail job2 = newJob(Job2.class) 
-        		.withIdentity("job2") 
-        		.build();
-
-   		cronTrigger("cron1", job2, p);
+   	 					// search a cron expression
+   	 					key = parts[0]+".expression";
+   	 					String expression = p.getProperty(key,"none");
+   	 					if("none".equals(expression)) {
+   	 						// no expression, so it's a trigger
+   	 						pullTrigger(parts[0], job, p);
+   	 					} else {
+   	 						// it's a cron
+   	 						cronTrigger(parts[0], job, expression);
+   	 					}
+   	 				} catch (ClassNotFoundException e) {
+   	   	 				LOGGER.error("Unkonwn "+jobClass+" for "+parts[0],e);
+  	 				}
+   	 			} else {
+   	 				LOGGER.info(parts[0]+" is disabled.");
+   	 			}
+   	 		}
+   	 	}
     }
     
     public void contextDestroyed (ServletContextEvent sce) {
@@ -89,14 +115,11 @@ public class Listener implements ServletContextListener {
     }
 
     private void pullTrigger(String triggerName, JobDetail job, Properties prop) {
-    	String status = prop.getProperty(triggerName + ".status","off");
-    	String msg = "Trigger "+triggerName;
-    	if(status.equals("on")) {
-        	msg += " is enabled every ";
-    		int seconds = Integer.valueOf(prop.getProperty(triggerName + ".intervalInSeconds","0"));
-    		int minutes = Integer.valueOf(prop.getProperty(triggerName + ".intervalInMinutes","0"));
-    		int hours   = Integer.valueOf(prop.getProperty(triggerName + ".intervalInHours","24"));
-    		try {
+    	String msg = "Trigger "+triggerName+" is enabled every ";
+   		int seconds = Integer.valueOf(prop.getProperty(triggerName + ".intervalInSeconds","0"));
+   		int minutes = Integer.valueOf(prop.getProperty(triggerName + ".intervalInMinutes","0"));
+   		int hours   = Integer.valueOf(prop.getProperty(triggerName + ".intervalInHours","24"));
+   		try {
     			SimpleScheduleBuilder ssb = simpleSchedule();
     			if(seconds>0) {
     	        	msg += seconds+" seconds";
@@ -117,21 +140,16 @@ public class Listener implements ServletContextListener {
     			// Tell quartz to schedule the job using our trigger 
     			scheduler.scheduleJob(job, trigger);
    	        	LOGGER.info(msg+".");    			
-    		} catch( SchedulerException e){
+   		} catch( SchedulerException e){
     			LOGGER.error("SchedulerException",e);
-    		}
-    	} else {
-        	LOGGER.info(msg+" is disabled.");
-    	}
+   		}
     }
 
-    private void cronTrigger(String triggerName, JobDetail job, Properties prop) {
-    	String status     = prop.getProperty(triggerName + ".status","off");
-    	String expression = prop.getProperty(triggerName + ".expression","");
-
-    	String msg = "Cron "+triggerName;
-    	if(status.equals("on") && !expression.isEmpty()) {
-        	msg += " is enabled: "+expression;
+    private void cronTrigger(String triggerName, JobDetail job, String expression) {
+    	String msg = "Cron "+triggerName+" expression is ";
+    	if(expression.isEmpty()) {
+        	LOGGER.error(msg+"empty.");
+    	} else {
     		try {
     			CronTrigger trigger = newTrigger()
     					.withIdentity(triggerName)
@@ -139,12 +157,10 @@ public class Listener implements ServletContextListener {
     				    .build();
     			// Tell quartz to schedule the job using our trigger 
     			scheduler.scheduleJob(job, trigger);
-   	        	LOGGER.info(msg);    			
+   	        	LOGGER.info(msg+expression);    			
     		} catch( SchedulerException e){
     			LOGGER.error("SchedulerException",e);
     		}
-    	} else {
-        	LOGGER.info(msg+" is disabled.");
     	}
     }
 }
