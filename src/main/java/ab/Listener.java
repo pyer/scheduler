@@ -46,8 +46,10 @@ public class Listener implements ServletContextListener {
 //			e.printStackTrace();
     		LOGGER.error("SchedulerException",e);
 		}
-        // Read properties file and launch jobs
-    	initializeJobs();
+   		// Load properties
+   	    Properties p = loadProperties("listener.properties");
+        // Launch jobs
+    	initializeJobs(p);
     }
     
     public void contextDestroyed (ServletContextEvent sce) {
@@ -60,11 +62,8 @@ public class Listener implements ServletContextListener {
 		}
     }
 
-    private void initializeJobs()
+    private void initializeJobs(Properties p)
     {
-   		// Load properties
-   	    Properties p = loadProperties("listener.properties");
-   		
    	    // assign the property names in a enumeration
    	    Enumeration<?> en = p.propertyNames();
    	  	while (en.hasMoreElements()){
