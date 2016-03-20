@@ -46,49 +46,8 @@ public class Listener implements ServletContextListener {
 //			e.printStackTrace();
     		LOGGER.error("SchedulerException",e);
 		}
-
-   		// Load properties
-   	    Properties p = loadProperties("listener.properties");
-   		
-   	    // assign the property names in a enumeration
-   	    Enumeration<?> en = p.propertyNames();
-   	  	while (en.hasMoreElements()){
-   	 		String prop = en.nextElement().toString();
-   	 		LOGGER.debug(prop);
-   	 		String[] parts = prop.split("\\.");
-   	 		if( "status".equals(parts[1]) ) {
-   	 			// property exists
-   	 			String key = p.getProperty(prop,"off");
-   	 			if("on".equals(key)) {
-   	 				// define the job and tie it to the job class
-   	 				key = parts[0]+".job";
-   	 				String jobClass = p.getProperty(key);
-   	 				try {
-   	   	 				LOGGER.info(parts[0]+" launches "+jobClass);
-   	 					//Class<? extends Job> k = (Class<? extends Job>) Class.forName(jobClass);
-   	   	 				@SuppressWarnings("unchecked")
-   	 					JobDetail job = newJob((Class<? extends Job>) Class.forName(jobClass))
-   	 							.withIdentity(jobClass) 
-   	 							.build();
-
-   	 					// search a cron expression
-   	 					key = parts[0]+".expression";
-   	 					String expression = p.getProperty(key,"none");
-   	 					if("none".equals(expression)) {
-   	 						// no expression, so it's a trigger
-   	 						pullTrigger(parts[0], job, p);
-   	 					} else {
-   	 						// it's a cron
-   	 						cronTrigger(parts[0], job, expression);
-   	 					}
-   	 				} catch (ClassNotFoundException e) {
-   	   	 				LOGGER.error("Unkonwn "+jobClass+" for "+parts[0],e);
-  	 				}
-   	 			} else {
-   	 				LOGGER.info(parts[0]+" is disabled.");
-   	 			}
-   	 		}
-   	 	}
+        // Read properties file and launch jobs
+    	initializeJobs();
     }
     
     public void contextDestroyed (ServletContextEvent sce) {
@@ -100,7 +59,53 @@ public class Listener implements ServletContextListener {
     		LOGGER.error("SchedulerException",e);
 		}
     }
-    
+
+    private void initializeJobs()
+    {
+   		// Load properties
+   	    Properties p = loadProperties("listener.properties");
+   		
+   	    // assign the property names in a enumeration
+   	    Enumeration<?> en = p.propertyNames();
+   	  	while (en.hasMoreElements()){
+   	 		String prop = en.nextElement().toString();
+   	 		LOGGER.debug(prop);
+   	 		String[] parts = prop.split("\\.");
+   	 		String name = parts[0];
+   	 		if( "status".equals(parts[1]) ) {
+   	 			// property exists
+   	 			String key = p.getProperty(prop,"off");
+   	 			if("on".equals(key)) {
+   	 				// define the job and tie it to the job class
+   	 				String jobClass = p.getProperty(name+".job");
+   	 				try {
+   	   	 				LOGGER.info(name+" launches "+jobClass);
+   	 					//Class<? extends Job> k = (Class<? extends Job>) Class.forName(jobClass);
+   	   	 				@SuppressWarnings("unchecked")
+   	 					JobDetail job = newJob((Class<? extends Job>) Class.forName(jobClass))
+   	 							.withIdentity(jobClass) 
+   	 							.build();
+
+   	 					// search a cron expression
+   	 					String value = p.getProperty(name+".expression","none");
+   	 					if("none".equals(value)) {
+   	 						// no expression, so it's a trigger
+   	 						value = p.getProperty(name+".interval","1");
+   	 						pullTrigger(name, job, value, p.getProperty(name+".unit","second"));
+   	 					} else {
+   	 						// it's a cron
+   	 						cronTrigger(name, job, value);
+   	 					}
+   	 				} catch (ClassNotFoundException e) {
+   	   	 				LOGGER.error("Unkonwn "+jobClass+" for "+parts[0],e);
+  	 				}
+   	 			} else {
+   	 				LOGGER.info(parts[0]+" is disabled.");
+   	 			}
+   	 		}
+   	 	}
+    }
+ 
     private Properties loadProperties(String name) {
     	ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
     	InputStream input = classLoader.getResourceAsStream(name);
@@ -114,23 +119,21 @@ public class Listener implements ServletContextListener {
     	return p;
     }
 
-    private void pullTrigger(String triggerName, JobDetail job, Properties prop) {
-    	String msg = "Trigger "+triggerName+" is enabled every ";
-   		int seconds = Integer.valueOf(prop.getProperty(triggerName + ".intervalInSeconds","0"));
-   		int minutes = Integer.valueOf(prop.getProperty(triggerName + ".intervalInMinutes","0"));
-   		int hours   = Integer.valueOf(prop.getProperty(triggerName + ".intervalInHours","24"));
-   		try {
+    private void pullTrigger(String triggerName, JobDetail job, String value, String unit) {
+    	LOGGER.info("Trigger "+triggerName+" is enabled every "+value+ " "+unit);
+   		int interval = Integer.valueOf(value);
+    	if(unit.isEmpty()) {
+        	LOGGER.error("Trigger "+triggerName+" unit is undefined.");
+    	} else {
+    		try {
     			SimpleScheduleBuilder ssb = simpleSchedule();
-    			if(seconds>0) {
-    	        	msg += seconds+" seconds";
-    				ssb = ssb.withIntervalInSeconds(seconds);
+    			if(unit.startsWith("second")) {
+    				ssb = ssb.withIntervalInSeconds(interval);
     			} else {
-    				if(minutes>0) {
-        	        	msg += minutes+" minutes";
-    					ssb = ssb.withIntervalInMinutes(minutes);
+    				if(unit.startsWith("minute")) {
+    					ssb = ssb.withIntervalInMinutes(interval);
     				} else {
-        	        	msg += hours+" hours";
-    					ssb = ssb.withIntervalInHours(hours);
+    					ssb = ssb.withIntervalInHours(interval);
     				}
     			}
     			SimpleTrigger trigger = newTrigger()
@@ -139,9 +142,9 @@ public class Listener implements ServletContextListener {
 					.build();
     			// Tell quartz to schedule the job using our trigger 
     			scheduler.scheduleJob(job, trigger);
-   	        	LOGGER.info(msg+".");    			
-   		} catch( SchedulerException e){
+    		} catch( SchedulerException e){
     			LOGGER.error("SchedulerException",e);
+    		}
    		}
     }
 
