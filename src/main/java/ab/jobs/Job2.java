@@ -1,4 +1,4 @@
-package ab;
+package ab.jobs;
 
 
 import org.slf4j.Logger;
