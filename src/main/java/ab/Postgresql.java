@@ -5,8 +5,10 @@ import java.sql.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+//import ab.jobs.Job1;
+
 public class Postgresql {
-    private static final Logger LOGGER = LoggerFactory.getLogger(Job1.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(Postgresql.class);
 
     Postgresql() {
     	try {
