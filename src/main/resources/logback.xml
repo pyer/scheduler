@@ -5,7 +5,8 @@
     <File>logs/listener.log</File>
     <encoder>
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
-    </encoder>  </appender>
+    </encoder>
+  </appender>
 
   <appender name="JOBS" class="ch.qos.logback.core.FileAppender">
     <File>logs/jobs.log</File>
