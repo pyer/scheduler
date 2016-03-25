@@ -15,7 +15,6 @@ import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
-import org.quartz.SchedulerFactory;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.SimpleTrigger;
 
@@ -39,8 +38,7 @@ public class Listener implements ServletContextListener {
     	LOGGER.info("BEGIN");
     	try {
        		//Creating scheduler factory and scheduler
-       		SchedulerFactory factory = new StdSchedulerFactory();
-       		scheduler = factory.getScheduler();
+       		scheduler = new StdSchedulerFactory().getScheduler();
        		scheduler.start();
 		} catch (SchedulerException e) {
 //			e.printStackTrace();
@@ -49,7 +47,7 @@ public class Listener implements ServletContextListener {
    		// Load properties
    	    Properties p = loadProperties("listener.properties");
         // Launch jobs
-    	initializeJobs(p);
+    	initializeJobs(scheduler, p);
     }
     
     public void contextDestroyed (ServletContextEvent sce) {
@@ -62,7 +60,7 @@ public class Listener implements ServletContextListener {
 		}
     }
 
-    private void initializeJobs(Properties p)
+    public void initializeJobs(Scheduler sched, Properties p)
     {
    	    // assign the property names in a enumeration
    	    Enumeration<?> en = p.propertyNames();
@@ -72,11 +70,11 @@ public class Listener implements ServletContextListener {
    	 		String[] parts = prop.split("\\.");
    	 		String name = parts[0];
    	 		if( "status".equals(parts[1]) ) {
-   	 			// property exists
+   	 			// property status exists
    	 			String key = p.getProperty(prop,"off");
-   	 			if("on".equals(key)) {
-   	 				// define the job and tie it to the job class
-   	 				String jobClass = p.getProperty(name+".job");
+     	 		// define the job and tie it to the job class
+   	 			String jobClass = p.getProperty(name+".job","");
+   	 			if("on".equals(key) && !jobClass.isEmpty()) {
    	 				try {
    	   	 				LOGGER.info(name+" launches "+jobClass);
    	 					//Class<? extends Job> k = (Class<? extends Job>) Class.forName(jobClass);
@@ -90,16 +88,16 @@ public class Listener implements ServletContextListener {
    	 					if("none".equals(value)) {
    	 						// no expression, so it's a trigger
    	 						value = p.getProperty(name+".interval","1");
-   	 						pullTrigger(name, job, value, p.getProperty(name+".unit","second"));
+   	 						pullTrigger(sched, name, job, value, p.getProperty(name+".unit","second"));
    	 					} else {
    	 						// it's a cron
-   	 						cronTrigger(name, job, value);
+   	 						cronTrigger(sched, name, job, value);
    	 					}
    	 				} catch (ClassNotFoundException e) {
-   	   	 				LOGGER.error("Unkonwn "+jobClass+" for "+parts[0],e);
-  	 				}
+   	   	 				LOGGER.error("Unknown "+jobClass+" for "+name,e);
+   	 				}
    	 			} else {
-   	 				LOGGER.info(parts[0]+" is disabled.");
+   	 				LOGGER.info(name+" is disabled.");
    	 			}
    	 		}
    	 	}
@@ -118,7 +116,7 @@ public class Listener implements ServletContextListener {
     	return p;
     }
 
-    private void pullTrigger(String triggerName, JobDetail job, String value, String unit) {
+    private void pullTrigger(Scheduler sched, String triggerName, JobDetail job, String value, String unit) {
     	LOGGER.info("Trigger "+triggerName+" is enabled every "+value+ " "+unit);
    		int interval = Integer.valueOf(value);
     	if(unit.isEmpty()) {
@@ -140,14 +138,14 @@ public class Listener implements ServletContextListener {
 					.withSchedule(ssb.repeatForever())
 					.build();
     			// Tell quartz to schedule the job using our trigger 
-    			scheduler.scheduleJob(job, trigger);
+    			sched.scheduleJob(job, trigger);
     		} catch( SchedulerException e){
     			LOGGER.error("SchedulerException",e);
     		}
    		}
     }
 
-    private void cronTrigger(String triggerName, JobDetail job, String expression) {
+    private void cronTrigger(Scheduler sched, String triggerName, JobDetail job, String expression) {
     	String msg = "Cron "+triggerName+" expression is ";
     	if(expression.isEmpty()) {
         	LOGGER.error(msg+"empty.");
@@ -158,10 +156,12 @@ public class Listener implements ServletContextListener {
     				    .withSchedule(cronSchedule(expression))
     				    .build();
     			// Tell quartz to schedule the job using our trigger 
-    			scheduler.scheduleJob(job, trigger);
+    			sched.scheduleJob(job, trigger);
    	        	LOGGER.info(msg+expression);    			
-    		} catch( SchedulerException e){
+    		} catch(SchedulerException e){
     			LOGGER.error("SchedulerException",e);
+    		} catch(RuntimeException e){
+    			LOGGER.error("Invalid cron "+triggerName+" expression");
     		}
     	}
     }
