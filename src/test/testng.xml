@@ -1,0 +1,17 @@
+<suite name="Scheduler test Suite">
+  <test name="Listener">
+    <classes>
+      <class name="ab.ListenerTest" />
+    </classes>
+  </test>
+  <test name="Job1">
+    <classes>
+      <class name="ab.jobs.Job1Test" />
+    </classes>
+  </test>
+  <test name="Job2">
+    <classes>
+      <class name="ab.jobs.Job2Test" />
+    </classes>
+  </test>
+</suite>
