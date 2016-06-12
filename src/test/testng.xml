@@ -1,4 +1,4 @@
-<suite name="Scheduler test Suite">
+<suite name="Scheduler test Suite" verbose="0">
   <test name="Listener">
     <classes>
       <class name="ab.ListenerTest" />
