@@ -99,7 +99,7 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <version>2.5</version>
       </plugin>
-      <plugin>
+      <!-- plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
         <version>2.10</version>
@@ -128,22 +128,13 @@
             </configuration>
           </execution>
         </executions>
-      </plugin>
+      </plugin -->
 
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-site-plugin</artifactId>
         <version>3.5.1</version>
       </plugin>
-
-      <!-- plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-eclipse-plugin</artifactId>
-        <version>${version.maven-eclipse-plugin}</version>
-        <configuration>
-          <wtpversion>${version.wtp}</wtpversion>
-        </configuration>
-      </plugin -->
     </plugins>
   </build>
 
