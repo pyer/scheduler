@@ -1,0 +1,4 @@
+#!/bin/sh
+mkdir -p target/webapps
+cp target/scheduler.war target/webapps/
+docker run --name="scheduler" -d -v $(pwd)/target:/home -p 8080:8080 pyer/tomcat:8.5
