@@ -1,0 +1,24 @@
+group:     ab
+name:      scheduler
+version:   1.0.0
+packaging: war
+
+dependencies:
+  - /javax/servlet/javax.servlet-api/4.0.1/javax.servlet-api-4.0.1.jar
+  - /org/quartz-scheduler/quartz/2.2.2/quartz-2.2.2.jar
+  - /ch/qos/logback/logback-classic/1.1.6/logback-classic-1.1.6.jar
+  - /ch/qos/logback/logback-core/1.1.6/logback-core-1.1.6.jar
+  - /org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18.jar
+
+testDependencies:
+  - /org/slf4j/slf4j-nop/1.7.18/slf4j-nop-1.7.18.jar
+
+properties:
+  targetDirectory: target
+  sourceDirectory: src/main/java
+  resourceDirectory: src/main/resources
+  webappDirectory: src/main/webapp
+  outputDirectory: target/classes
+  testOutputDirectory: target/test-classes
+  testReportDirectory: target/test-reports
+
