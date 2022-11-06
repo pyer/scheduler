@@ -10,7 +10,8 @@ dependencies:
   - /org/slf4j/slf4j-api/1.7.18/slf4j-api-1.7.18.jar
 
 testDependencies:
-  - /org/slf4j/slf4j-nop/1.7.18/slf4j-nop-1.7.18.jar
+  - /com/beust/jcommander-1.48.jar
+  - /org/testng/testng-6.8.7.jar
 
 properties:
   targetDirectory: target
